@@ -34,14 +34,14 @@ const createProfile = async (req, res) => {
 // Get profile by user ID
 const getProfileByUserId = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId } = req.params;
 
     // Verify required data exists
     if (!userId) {
       return res.status(400).json({ message: 'userId field required.' });
     }
 
-    const profile = await Profile.findOne({ userId: req.userId });
+    const profile = await Profile.findOne({ userId: userId });
 
     if (!profile) {
       return res.status(404).json({ message: 'Profile not found' });
@@ -50,36 +50,54 @@ const getProfileByUserId = async (req, res) => {
     res.json(profile);
   } 
   catch (err) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 // Updates profile
 const updateProfile = async (req, res) => {
   try {
-    const { bio, images, profilePicture, numberOfLittles } = req.body;
 
-    // Checks if uploadPictures length exceeds max limit of 3
+    const { userId } = req.params;
+
+    const { interests, major, description, profileName, images, profilePicture, numberOfLittles } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
     if (images && images.length > 3) {
       return res.status(400).json({ message: 'Maximum of 3 pictures allowed' });
     }
 
-    const profileObject = { };
+    const existingProfile = await Profile.findOne({ userId: userId });
+    console.log("Existing Profile Found:", existingProfile);
 
-    if (bio) profileObject.bio = bio; 
-    if (images) profileObject.images = images; 
-    if (profilePicture) profileObject.profilePicture = profilePicture;
-    if (numberOfLittles) profileObject.numberOfLittles = numberOfLittles; 
-
-    const profile = await Profile.findOne({ 
-      userId: req.userId 
-    });
-
-    if (!profile) {
+    if (!existingProfile) {
       return res.status(404).json({ message: 'Profile not found' });
     }
 
-    res.json(profile);
+    const profileObject = { };
+
+    if(interests) profileObject.interests = interests;
+    if (major) profileObject.major = major;
+    if (profileName) profileObject.profileName = profileName;
+    if (description) profileObject.description = description; 
+    if (images) profileObject.images = images; 
+    if (profilePicture) profileObject.profilePicture = profilePicture;
+    if (numberOfLittles != undefined) profileObject.numberOfLittles = numberOfLittles; //changed this so it will work if numberOfLittles is 0
+
+    const updatedProfile = await Profile.findOneAndUpdate(
+      { userId: userId },  // Find profile by userId
+      { $set: profileObject },  // Update fields
+      { new: true, runValidators: true }  // Return updated profile
+    );
+
+    if (!updatedProfile) {
+      return res.status(404).json({ message: 'Profile not found' });
+    }
+
+    res.json(updatedProfile);
   } 
   catch (error) {
     res.status(400).json({ message: error.message });

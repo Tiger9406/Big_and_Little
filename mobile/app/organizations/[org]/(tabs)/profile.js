@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Pressable, Image, Text, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, Alert, View, ScrollView, StyleSheet } from 'react-native';
 
 import { Link, router } from 'expo-router';
-import { useGlobalSearchParams } from 'expo-router/build/hooks';
+import { useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
 import Constants from "expo-constants";
 import * as ImagePicker from 'expo-image-picker';
 
@@ -25,9 +25,11 @@ export default function ViewProfile() {
     const [isEditing, setIsEditing] = useState(false);
     const [profileName, setProfileName] = useState('');
     const [images, setImages] = useState([]);
-    
+    const { userId, profiles, token } = useAuth();
     const params = useGlobalSearchParams();
-
+    const [orgID, setOrgID] = useState('');
+    
+    
     // State for scroll fix
     const scrollViewRef = useRef(null);
     const scrollFix = useRef(false);
@@ -35,6 +37,10 @@ export default function ViewProfile() {
     const toggleIsEditing = (edit) => {
         setIsEditing(edit);
     };
+    
+    useEffect(() => {
+      getProfile();
+    }, []);
 
     //image picker function 
     const pickImage = async (index) => {
@@ -63,18 +69,88 @@ export default function ViewProfile() {
     /*
       TODO: add profile updating
       PUT profiles
+      
     */
     const saveProfile = () => {
+      
       toggleIsEditing(false);
+      //bio, images, profilePicture, numberOfLittles
+      //NEED TO UPDATE ALL VALUES NOT JUST THESE 4
+      const payload = {
+        interests: interests,
+        major: major,
+        description: description,
+        profileName: profileName,
+        images: images,
+        profilePicture: images[0],
+        numberOfLittles: 0
+      };
+      
+  
+      const URI = Constants.expoConfig.hostUri.split(':').shift();
+      const URL = `http://${URI}:${process.env.EXPO_PUBLIC_PORT}/profiles/${userId}`;
+
+      fetch(URL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+
+        },
+        body: JSON.stringify(payload)
+      }).then(res => {
+        if (!res.ok) { 
+          res.text().then(text => {
+            Alert.alert('', text, [{
+              text: 'OK',
+              style: 'cancel'
+            }]);
+            console.log('Login failed');            
+          });
+        } else {
+         
+          console.log('Profile updated');
+          
+        }
+      }).catch(err => console.log("ERROR", err));
     };
 
     /*
       TODO: get profile to display current information
       GET profiles
     */
-    const getProfile = async () => {
-      // await fetch(`http://${URI}:${process.env.EXPO_PUBLIC_PORT}/${params.userId}`);
-    };
+      const getProfile = async () => {
+        try {
+          const URI = Constants.expoConfig.hostUri.split(':').shift();
+          const url = `http://${URI}:${process.env.EXPO_PUBLIC_PORT}/profiles/${userId}`;
+      
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+          });
+      
+          if (!response.ok) {
+            throw new Error(`Failed to fetch profile data: ${response.status} ${response.statusText}`);
+          }
+      
+          const profileData = await response.json();
+          
+          
+          setProfileName(profileData.profileName || '');
+          setMajor(profileData.major || '');
+          setDescription(profileData.description || '');
+          setImages(profileData.images || []);
+          setInterests(profileData.interests || ['+']);
+          setOrgID(profileData.organizationId || '');
+          
+        } catch (err) {
+          console.error("Error fetching profile:", err);
+          Alert.alert('Error', 'Failed to fetch profile data');
+        }
+      };
 
     const handlePressInterest = (index) => {
       if (!isEditing) return;
@@ -217,7 +293,7 @@ export default function ViewProfile() {
 
 
               <View style={styles.buttonContainer}>
-                <StyledButton text={isEditing ? "Save" : "Edit" } onClick={() => {isEditing ? toggleIsEditing(false) : toggleIsEditing(true) }} />
+                <StyledButton text={isEditing ? "Save" : "Edit" } onClick={() => {isEditing ? saveProfile() : toggleIsEditing(true) }} />
               </View>
 
                 {/* <StyledButton text="Save" onClick={saveProfile} /> */}

@@ -11,7 +11,12 @@ router.route('/profiles')
 
 router.route('/profiles/:userId')
   .get(profileController.getProfileByUserId)
-  .put(profileController.updateProfile)
+  .put((req, res, next) => {
+    console.log("Received PUT request for userId:", req.params.userId);
+    console.log("Request body:", req.body);
+    console.log("Headers:", req.headers);
+    next();
+}, profileController.updateProfile)
   .delete(profileController.deleteProfile);
 
 module.exports = router;
