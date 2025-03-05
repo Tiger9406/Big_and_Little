@@ -7,7 +7,7 @@ const verifyToken = require('../middleware/authMiddleware');
 router.use('/profiles', verifyToken);
 
 router.route('/profiles')
-  .post(profileController.createProfile)
+  .post(profileController.createProfile);
 
 router.route('/profiles/:userId')
   .get(profileController.getProfileByUserId)

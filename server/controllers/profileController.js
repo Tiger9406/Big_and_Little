@@ -1,33 +1,116 @@
-const Profile = require('../models/Profile');
+const jwt = require('jsonwebtoken');
 
-// Creates a new profile
+const Profile = require('../models/Profile');
+const Organization = require('../models/Organization');
+
 const createProfile = async (req, res) => {
   try {
-    const { organizationId, bio, images, profilePicture, role, numberOfLittles, ranking } = req.body;
+    const { 
+      userId,
+      organizationId, 
+      interests,
+      major,
+      description,
+      profileName,
+      images,
+      profilePicture,
+      role,
+      numberOfLittles 
+    } = req.body;
 
     // Verify required data exists
-    if (!req.userId || !organizationId || !role) {
-      return res.status(400).json({ message: 'userId, organizationId, and role fields required.' });
+    if (!userId || !organizationId || !role) {
+      return res.status(400).json({ 
+        message: 'userId, organizationId, and role fields required.' 
+      });
+    }
+
+    // Check if profile already exists for this user in this organization
+    const existingProfile = await Profile.findOne({ 
+      userId, 
+      organizationId 
+    });
+
+    if (existingProfile) {
+      return res.status(400).json({ 
+        message: 'Profile already exists for this user in this organization' 
+      });
     }
 
     // Check if uploadPictures length exceeds max limit of 3
     if (images && images.length > 3) {
-      return res.status(400).json({ message: 'Maximum of 3 pictures allowed' });
+      return res.status(400).json({ 
+        message: 'Maximum of 3 pictures allowed' 
+      });
     }
 
-    const profileObject = { userId, organizationId, bio, images, profilePicture, role, numberOfLittles, ranking };
+    const profileObject = {
+      userId,
+      organizationId,
+      role,
+      interests: interests || [],
+      major: major || '',
+      description: description || '',
+      profileName: profileName || '',
+      images: images || [],
+      profilePicture: profilePicture || '',
+      numberOfLittles: role === 'Big' ? (numberOfLittles || 0) : undefined
+    };
 
-    const profile = await Profile.create(profileObject);
+    //use session to make sure creation of profile and add to org; atomic
+    const session = await Profile.startSession();
+    let profile;
 
-    if (profile) {
-      res.status(201).json({ message: `New profile created.` });
+    try {
+      await session.withTransaction(async () => {
+        // create the profile
+        profile = await Profile.create([profileObject], { session });
+        profile = profile[0]; // create returns an array when used with session
+
+        // Add user to organization's members
+        await Organization.findByIdAndUpdate(
+          organizationId,
+          { $addToSet: { members: profile._id } }, // $addToSet prevents duplicate entries
+          { session }
+        );
+
+        // get all user's profiles for token update
+        const allProfiles = await Profile.find({ userId })
+          .populate('organizationId')
+          .session(session)  // same session
+          .exec();
+
+        const profilesArray = allProfiles.map(p => ({
+          id: p._id,
+          organizationId: p.organizationId._id,
+          isOwner: p.organizationId.owner.equals(userId)
+        }));
+
+        // Create new JWT
+        const accessToken = jwt.sign(
+          {
+            'UserInfo': {
+              'userId': userId,
+              'profiles': profilesArray
+            }
+          },
+          process.env.JWT_SECRET_KEY,
+          { expiresIn: '7d' }
+        );
+        res.status(201).json({profile, accessToken});
+      });
+    } catch (error) {
+      throw error;
     }
-    else {
-      return res.status(400).json({ message: 'Invalid profile data received.' });
+    finally {
+      await session.endSession();
     }
   }
   catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Profile creation error:', err);
+    res.status(400).json({ 
+      message: err.message 
+    });
   }
 };
 
@@ -104,22 +187,47 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// Deletes profile
 const deleteProfile = async (req, res) => {
   try {
-    const { userId } = req.body;
+      const { userId, organizationId } = req.body;  // Add organizationId to request body
 
-    if (userId != req.userId) {
-      return res.status(401).json({ message: "Cannot delete another User's profile" })
-    }
+      if (userId != req.userId) {
+          return res.status(401).json({ message: "Cannot delete another User's profile" })
+      }
 
-    const profile = await Profile.findOneAndDelete({ userId: req.userId });
-    if (!profile) {
-      return res.status(404).json({ message: 'Profile not found' });
-    }
-    res.json({ message: 'Profile deleted successfully' });
+      const profile = await Profile.findOne({ 
+          userId: req.userId,
+          organizationId: organizationId  // Add this condition
+      });
+      
+      if (!profile) {
+          return res.status(404).json({ message: 'Profile not found' });
+      }
+
+      const session = await Profile.startSession();
+      try {
+          await session.withTransaction(async () => {
+              // Remove user from organization's members using profile ID
+              await Organization.findByIdAndUpdate(
+                  organizationId,
+                  { $pull: { members: profile._id } },
+                  { session }
+              );
+
+              // Remove the specific profile
+              await Profile.findOneAndDelete({ 
+                  userId: req.userId,
+                  organizationId: organizationId  // Add this condition
+              }, { session });
+          });
+          await session.endSession();
+          res.json({ message: 'Profile deleted successfully' });
+      } catch (error) {
+          await session.endSession();
+          throw error;
+      }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+      res.status(500).json({ message: error.message });
   }
 };
 

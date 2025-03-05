@@ -31,7 +31,6 @@ const getOrganizations = async (req, res) => {
             description: org.description,
             logo: org.logo,
             size: org.members.length,
-            id: org._id
         }));
         return res.status(200).send(orgsArray);
     } catch (err) { // Server error (Probably a Mongoose connection issue)

@@ -1,4 +1,4 @@
-import Constants from "expo-constants";
+import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { fetchImage } from "@middleware/fetchImage";
@@ -8,26 +8,28 @@ import OrganizationCard from "@components/OrganizationCard";
 import StyledButton from "@components/StyledButton";
 import { View, StyleSheet, FlatList } from "react-native";
 import useAuth from '@context/useAuth';
+import { useSession } from '@context/ctx'; 
 
 export default function Explore() {
   const router = useRouter();   
   const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState([]);
   const { userId, profiles } = useAuth();
+  const { session } = useSession();
 
 
   useFocusEffect(
     useCallback(() => {
-      let isMounted = true; // keeps track so that state only updates when elements are present 
+      let isMounted = true;
       setLoading(true);
-      // Get IP that Expo server is using to host app, allows to connect with the backend
+
       const URI = Constants.expoConfig.hostUri.split(':').shift();
+      
       fetch(`http://${URI}:${process.env.EXPO_PUBLIC_PORT}/organizations`)
         .then(res => res.json())
         .then(async json => {
           const updatedOrganizations = await Promise.all(
             json.map(async (org) => {
-              // Currently, use MOCK_IMAGE_ID instead of ID found in org.logo
               const logoURL = await fetchImage('organization', org.logo);
 
               const joined = profiles.some(profile => profile.organizationId === org.id);
@@ -40,11 +42,28 @@ export default function Explore() {
             setOrgs(updatedOrganizations);
             setLoading(false);
           }
+        })
+        .catch(err => {
+          setLoading(false);
         });
-        return () => { isMounted = false; }; 
-      }, [userId]) // dependency array, if the userId changes, the function will rerun 
+
+      return () => { isMounted = false; }; 
+      }, [userId, session])
   );
 
+  const handlePress = (orgId) => {
+    const isInOrg = profiles.some(profile => profile.organizationId === orgId);
+    console.log(isInOrg);
+    if (isInOrg){
+      router.push(`/organizations/${orgId}`);
+    } 
+    else{
+      router.push({
+        pathname: "/join-org",
+        params: { org: orgId }
+      });
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -55,7 +74,12 @@ export default function Explore() {
             style={styles.orgContainer}
             contentContainerStyle={{ padding: 20, gap: 20 }}
             data={orgs}
-            renderItem={({ item }) => <OrganizationCard org={item} />}
+            renderItem={({ item }) => 
+              <OrganizationCard
+                org={item}
+                onPress={() => handlePress(item.id)}
+              />
+            }
             keyExtractor={item => item.id}
           />
           <View style={styles.button}>

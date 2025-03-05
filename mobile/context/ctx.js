@@ -51,6 +51,12 @@ export function SessionProvider({ children }) {
     <AuthContext.Provider
       value={{
         signIn: async (payload) => {
+          if(payload.newToken) {
+            setSession(payload.newToken);
+            return {
+              success: true,
+            };
+          }
           // TODO: Probably not ideal
           // Get IP that Expo server is using to host app, allows to connect with the backend
           const URI = Constants.expoConfig.hostUri.split(':').shift();
