@@ -106,7 +106,7 @@ export default function ViewProfile() {
           key={JSON.stringify(profileData)} 
           initialData={profileData}
           onSubmit={saveProfile}
-          role="Big"
+          role={profileData.role}
         />
       ) : (
         <ReadOnlyProfile 
