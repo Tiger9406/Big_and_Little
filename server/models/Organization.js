@@ -64,6 +64,14 @@ const organizationSchema = new mongoose.Schema({
   currentRound: { // 0-indexed
     type: Number,
     default: 0
+  },
+  unMatched: {
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Profile"
+      }
+    ]
   }
 });
 

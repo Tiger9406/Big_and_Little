@@ -41,14 +41,24 @@ const profileSchema = new mongoose.Schema({
   numberOfLittles: { // Only applies for Bigs
     type: Number
   },
-  ranking: {
-    type: Map,
-    of: Number
-  },
   profilePic: {
     type: String,
     default: "DEFAULT_PROFILE_PIC_ID"
   },
+  maxSpots: { 
+    type: Number, 
+    default: 1 
+  },
+  rankings: [{
+    user: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Profile' },
+    timestamp: Date
+  }],
+  matches: [{ 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Profile' 
+  }],
 });
 
 module.exports = mongoose.model('Profile', profileSchema);

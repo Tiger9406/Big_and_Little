@@ -1,0 +1,12 @@
+{
+    "name": "mentor-mentee-matching",
+    "version": "1.0.0",
+    "description": "Lambda function for mentor-mentee matching",
+    "main": "index.js",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {
+      "mongodb": "^4.0.0"
+    }
+  }
