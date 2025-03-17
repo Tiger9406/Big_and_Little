@@ -15,4 +15,7 @@ router.route('/organizations/:orgId')
 router.route('/organizations/:orgId/members')
     .get(orgController.getOrganizationMembers);
 
+router.route('/organizations/:joinCode/get-org')
+    .get(orgController.getOrganizationByJoinCode);
+
 module.exports = router;

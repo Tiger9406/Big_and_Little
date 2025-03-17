@@ -54,8 +54,6 @@ export default function JoinOrg() {
         throw new Error(errorData || 'Failed to create profile');
       }
 
-      
-
       const result = await response.json();
       
       if (result.accessToken) {
