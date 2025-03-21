@@ -1,242 +1,237 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { useState, useEffect, useRef } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import Swiper from 'react-native-deck-swiper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useLocalSearchParams } from "expo-router";
+import Constants from "expo-constants";
 
-// Sample profiles 
-const profiles = [
-  {
-    id: 1,
-    name: 'Jane Doe',
-    year: 'Sophomore',
-    image: 'https://via.placeholder.com/300',
-    interests: ['Hiking', 'Foodie', 'Movies'],
-    description: 'Jane Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis nec iaculis urna, in dignissim sem. Nunc sollicitudin est et posuere ultricies. Sed fringilla nulla non condimentum fermentum. Cras nec euismod turpis, sollicitudin mollis eros. Vivamus feugiat velit lacus, nec maximus purus gravida vitae. In volutpat odio quis massa aliquam, quis dapibus risus placerat. Pellentesque et nisi euismod, ullamcorper nunc ut, ultrices neque. Sed eget volutpat lectus. Nam eu luctus erat. Nam eu ante maximus, tincidunt lorem vitae, vulputate dui. Etiam eget odio in mi volutpat cursus id faucibus ex. Sed faucibus facilisis orci, sit amet dignissim dui congue in.',
-  },
-  {
-    id: 2,
-    name: 'John Smith',
-    year: 'Junior',
-    image: 'https://via.placeholder.com/300',
-    interests: ['Music', 'Travel', 'Cooking'],
-    description: 'John Vivamus feugiat velit lacus, nec maximus purus gravida vitae Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis nec iaculis urna, in dignissim sem. Nunc sollicitudin est et posuere ultricies. Sed fringilla nulla non condimentum fermentum. Cras nec euismod turpis, sollicitudin mollis eros. Vivamus feugiat velit lacus, nec maximus purus gravida vitae. In volutpat odio quis massa aliquam, quis dapibus risus placerat. Pellentesque et nisi euismod, ullamcorper nunc ut, ultrices neque. Sed eget volutpat lectus. Nam eu luctus erat. Nam eu ante maximus, tincidunt lorem vitae, vulputate dui. Etiam eget odio in mi volutpat cursus id faucibus ex. Sed faucibus facilisis orci, sit amet dignissim dui congue in.',
-  },
-  {
-    id: 3,
-    name: 'Alice Johnson',
-    year: 'Senior',
-    image: 'https://via.placeholder.com/300',
-    interests: ['Yoga', 'Painting', 'Writing'],
-    description: 'Alice Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis nec iaculis urna, in dignissim sem. Nunc sollicitudin est et posuere ultricies. Sed fringilla nulla non condimentum fermentum. Cras nec euismod turpis, sollicitudin mollis eros. Vivamus feugiat velit lacus, nec maximus purus gravida vitae. In volutpat odio quis massa aliquam, quis dapibus risus placerat. Pellentesque et nisi euismod, ullamcorper nunc ut, ultrices neque. Sed eget volutpat lectus. Nam eu luctus erat. Nam eu ante maximus, tincidunt lorem vitae, vulputate dui. Etiam eget odio in mi volutpat cursus id faucibus ex. Sed faucibus facilisis orci, sit amet dignissim dui congue in.',
-  },
-  {
-    id: 4,
-    name: 'Robert Brown',
-    year: 'Freshman',
-    image: 'https://via.placeholder.com/300',
-    interests: ['Gaming', 'Technology', 'Science'],
-    description: 'Robert Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis nec iaculis urna, in dignissim sem. Nunc sollicitudin est et posuere ultricies. Sed fringilla nulla non condimentum fermentum. Cras nec euismod turpis, sollicitudin mollis eros. Vivamus feugiat velit lacus, nec maximus purus gravida vitae. In volutpat odio quis massa aliquam, quis dapibus risus placerat. Pellentesque et nisi euismod, ullamcorper nunc ut, ultrices neque. Sed eget volutpat lectus. Nam eu luctus erat. Nam eu ante maximus, tincidunt lorem vitae, vulputate dui. Etiam eget odio in mi volutpat cursus id faucibus ex. Sed faucibus facilisis orci, sit amet dignissim dui congue in.',
-  },
-  {
-    id: 5,
-    name: 'Emily Clark',
-    year: 'Sophomore',
-    image: 'https://via.placeholder.com/300',
-    interests: ['Dancing', 'Fashion', 'Fitness'],
-    description: 'Emily Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis nec iaculis urna, in dignissim sem. Nunc sollicitudin est et posuere ultricies. Sed fringilla nulla non condimentum fermentum. Cras nec euismod turpis, sollicitudin mollis eros. Vivamus feugiat velit lacus, nec maximus purus gravida vitae. In volutpat odio quis massa aliquam, quis dapibus risus placerat. Pellentesque et nisi euismod, ullamcorper nunc ut, ultrices neque. Sed eget volutpat lectus. Nam eu luctus erat. Nam eu ante maximus, tincidunt lorem vitae, vulputate dui. Etiam eget odio in mi volutpat cursus id faucibus ex. Sed faucibus facilisis orci, sit amet dignissim dui congue in.',
-  },
-];
+import { fetchImage } from "@middleware/fetchImage";
+import { useSession } from "@context/ctx";
 
-export default function SwipePage() {
+import Loading from '@components/Loading';
+import ProfileCard from "@components/ProfileCard";
+
+export default function Matches() {
   const { org } = useLocalSearchParams();
+  const { session } = useSession();
 
-  const [profileIndex, setProfileIndex] = useState(0); //Current profile index
-  const swipeAnim = useRef(new Animated.Value(0)).current; // Animation of horizontal swipe
+  const [loading, setLoading] = useState(true);
+  const [organization, setOrganization] = useState({});
+  const [profiles, setProfiles] = useState([]);
+  const [swipes, setSwipes] = useState(0);
+  const [cardIndex, setCardIndex] = useState(0);
+  const [finished, setFinished] = useState(false);
+  
+  useEffect(() => {
+    // Get IP that Expo server is using to host app, allows to connect with the backend
+    const URI = Constants.expoConfig.hostUri.split(':').shift();
 
-  // Function to reset swipe and load next profile
-  const handleNextProfile = () => {
-    setProfileIndex((prevIndex) => (prevIndex + 1) % profiles.length); 
-    swipeAnim.setValue(0); 
-  };
+    const fetchData = async () => {
+      // Get organization
+      const organization = await fetch(`http://${URI}:${process.env.EXPO_PUBLIC_PORT}/organizations/${org}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session}`
+          }
+        }
+      ).then(res => res.json());
+      setOrganization(organization);
+      if (!organization.isMatching) {
+        setLoading(false);
+        return;
+      }
 
-  // Swipe to the right (like) and load next profile
-  const swipeRight = () => {
-    Animated.timing(swipeAnim, {
-      toValue: 500, // Moves off-screen to the right
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => handleNextProfile()); // After animation load next profile
-  };
+      // Get matching info
+      const matchInfo = await fetch(`http://${URI}:${process.env.EXPO_PUBLIC_PORT}/organizations/${org}/matches/profiles`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session}`
+          }
+        }
+      ).then(res => res.json());
 
-  // Swipe to the left (dislike) and load next profile
-  const swipeLeft = () => {
-    Animated.timing(swipeAnim, {
-      toValue: -500, // Moves off-screen to the left
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => handleNextProfile()); // After animation loads next profile
-  };
+      const profiles = await Promise.all(
+        matchInfo.profiles.map(async profile => {
+          const updatedImages = await Promise.all(
+            profile.images.map(async imageId => fetchImage('profile-images', imageId))
+          );
+          return { ...profile, images: updatedImages };
+        })
+      );
+      const swipes = matchInfo.swipes;
 
-  // Current profile based on profileIndex
-  const currentProfile = profiles[profileIndex];
+      // If user has ran out of swipes or there are no remaining profiles
+      if (swipes === 0 || profiles.length === 0) {
+        setFinished(true);
+      } else {
+        setProfiles(profiles);
+        setSwipes(Math.min(profiles.length, swipes));
+      }
+
+      setLoading(false);
+    }
+
+    fetchData();
+  }, []);
+
+  const swiper = useRef();
+
+  const swipe = () => {
+    setCardIndex(cardIndex + 1);
+    setSwipes(swipes - 1);
+
+    // User has gone through all swipes
+    if (swipes === 1) {
+      setFinished(true);
+    }
+  }
+
+  const swipeLeft = async () => {
+    const profileId = profiles[cardIndex]._id;
+
+    // Get IP that Expo server is using to host app, allows to connect with the backend
+    const URI = Constants.expoConfig.hostUri.split(':').shift();
+
+    await fetch(`http://${URI}:${process.env.EXPO_PUBLIC_PORT}/organizations/${org}/matches/swipeLeft/${profileId}`,
+      {
+        method: "POST",
+        headers: {
+          'Authorization': `Bearer ${session}`
+        }
+      }
+    );
+  }
+
+  const swipeRight = async () => {
+    const profileId = profiles[cardIndex]._id;
+
+    // Get IP that Expo server is using to host app, allows to connect with the backend
+    const URI = Constants.expoConfig.hostUri.split(':').shift();
+
+    await fetch(`http://${URI}:${process.env.EXPO_PUBLIC_PORT}/organizations/${org}/matches/swipeRight/${profileId}`,
+      {
+        method: "POST",
+        headers: {
+          'Authorization': `Bearer ${session}`
+        }
+      }
+    );
+  }
+
+  // User has gone through all profiles
+  // TODO: User may still have swipes left over
+  const swipeFinish = () => {
+    setFinished(true);
+  }
 
   return (
     <View style={styles.container}>
-      {/* Animated wrapper */}
-      <Animated.View style={[styles.animatedContainer, { transform: [{ translateX: swipeAnim }] }]}>
-        <ScrollView style={styles.scrollView}>
-          {/* Profile Header */}
-          <View style={styles.profileHeader}>
-            <Image style={styles.profilePicture} source={{ uri: currentProfile.image }} />
-            <View style={styles.userInfo}>
-              <Text style={styles.name}>{currentProfile.name}</Text>
-              <Text style={styles.year}>{currentProfile.year}</Text>
+    {loading ?
+      <Loading /> :
+      organization.isMatching ?
+        <View style={styles.body}>
+          <View style={styles.info}>
+            <Text style={styles.infoText}>Matching Round {organization.currentRound + 1}/{organization.rounds}</Text>
+          </View>
+          <View style={styles.body}>
+          {finished ?
+            <View style={styles.finish}>
+              <Text style={styles.text}>You have finished matching for Round {organization.currentRound + 1}!</Text>
+            </View> :
+            <View style={styles.body}>
+              <View style={styles.swiper}>
+                <Swiper
+                  ref={swiper}
+                  backgroundColor='transparent'
+                  cardVerticalMargin={0}
+                  cardHorizontalMargin={0}	
+                  cards={profiles}
+                  renderCard={profile => <ProfileCard profile={profile} />}
+                  cardStyle={styles.card}
+                  stackSize={profiles.length}
+                  stackScale={0}
+                  stackSeparation={0}
+                  horizontalSwipe={swipes !== 0}
+                  verticalSwipe={false}
+                  onSwiped={swipe}
+                  onSwipedLeft={swipeLeft}
+                  onSwipedRight={swipeRight}
+                  onSwipedAll={swipeFinish}
+                />
+              </View>
+              <View style={styles.buttons}>
+                <Pressable
+                  disabled={swipes === 0}
+                  onPress={() => swiper.current.swipeLeft()}
+                >
+                  <MaterialCommunityIcons name="close-circle-outline" size={70} color="black" />
+                </Pressable>
+                <Pressable
+                  disabled={swipes === 0}
+                  onPress={() => swiper.current.swipeRight()}
+                >
+                  <MaterialCommunityIcons name="heart-circle-outline" size={70} color="black" />
+                </Pressable>
+              </View>
             </View>
+          }
           </View>
-          
-          {/* Container with swipe buttons */}
-          <View style={styles.photoContainer}>
-            <Text style={styles.photoPlaceholder}>My Photos</Text>
-            {/* "X" button, swipe left */}
-            <TouchableOpacity style={styles.leftButton} onPress={swipeLeft}>
-              <FontAwesome name="times" size={46} color="black" />
-            </TouchableOpacity>
-            {/* Heart button, swipe right */}
-            <TouchableOpacity style={styles.rightButton} onPress={swipeRight}>
-              <FontAwesome name="heart" size={40} color="black" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Interests  */}
-          <View style={styles.interestsSection}>
-            <Text style={styles.sectionTitle}>Interests</Text>
-            <View style={styles.interestsContainer}>
-              {currentProfile.interests.map((interest, index) => (
-                <Text key={index} style={styles.interestItem}>{interest}</Text>
-              ))}
+          {!finished &&
+            <View style={styles.info}>
+              <Text style={styles.infoText}>{swipes} swipe{swipes !== 1 && "s"} left!</Text>
+              <Text style={styles.infoText}>{profiles.length - cardIndex} profile{profiles.length - cardIndex !== 1 && "s"} left!</Text>
             </View>
-          </View>
-
-          {/* Description */}
-          <View style={styles.descriptionSection}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <View style={styles.descriptionCard}>
-              <Text style={styles.username}>{currentProfile.name}</Text>
-              <Text style={styles.descriptionText}>{currentProfile.description}</Text>
-            </View>
-          </View>
-        </ScrollView>
-      </Animated.View>
+          }
+        </View> :
+        <Text style={styles.text}>{organization.name} is currently not matching, come again later!</Text>
+    }
     </View>
   );
 }
 
-// component styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
+    display: 'flex',
+    justifyContent: 'center'
   },
-  animatedContainer: {
-    flex: 1, //  entire profile view is animated
+  text: {
+    textAlign: 'center',
+    marginHorizontal: 20
   },
-  scrollView: {
-    paddingHorizontal: 20,
-    paddingRight: 15, // right margin, scrollbar
+  body: {
+    flex: 1,
   },
-  profileHeader: {
+  info: {
+    display: 'flex',
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'space-between',
+    padding: 10
   },
-  profilePicture: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#ccc',
+  infoText: {
+    fontSize: 20
   },
-  userInfo: {
-    marginLeft: 10,
+  finish: {
+    flex: 1,
+    display: 'flex',
+    justifyContent: 'center'
   },
-  name: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  swiper: {
+    flex: 1,
+    zIndex: 1
   },
-  year: {
-    fontSize: 16,
-    color: '#888',
-  },
-  photoContainer: {
-    height: 400,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    position: 'relative',
-  },
-  photoPlaceholder: {
-    fontSize: 18,
-    color: '#888',
-  },
-  leftButton: {
-    position: 'absolute',
-    bottom: 15,
-    left: 15,
-  },
-  rightButton: {
-    position: 'absolute',
-    bottom: 15,
-    right: 15,
-  },
-  interestsSection: {
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  interestsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  interestItem: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
-    fontSize: 14,
-  },
-  descriptionSection: {
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  descriptionCard: {
-    padding: 15,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-  },
-  username: {
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: '#555',
-  },
-  navbar: {
-    position: 'absolute',
-    bottom: 0,
+  card: {
+    top: 0,
     left: 0,
+    bottom: 0,
     right: 0,
-    height: 75,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    width: 'auto',
+    height: 'auto'
   },
+  buttons: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-around'
+  }
 });

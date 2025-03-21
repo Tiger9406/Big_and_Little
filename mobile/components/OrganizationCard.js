@@ -4,6 +4,8 @@ import { Pressable, View, Image, Text, StyleSheet } from "react-native";
   Organization Card Component - Displays organization information for the Explore page
 */
 export default function OrganizationCard({ org, onPress }) {
+  const size = org.members.length;
+
   return (
     <Pressable style={styles.container} onPress={onPress}>
       {org.joined && (
@@ -20,7 +22,7 @@ export default function OrganizationCard({ org, onPress }) {
           {org.description}
         </Text>
       </View>
-      <Text style={styles.size}>{org.size} {org.size == 1 ? "Member" : "Members"}</Text>
+      <Text style={styles.size}>{size} {size == 1 ? "Member" : "Members"}</Text>
     </Pressable>
   );
 };

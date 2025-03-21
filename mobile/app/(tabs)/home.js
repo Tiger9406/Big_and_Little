@@ -69,7 +69,7 @@ export default function Home() {
             renderItem={({ item }) => (
               <OrganizationCard
                 org={item} 
-                onPress={() => router.push(`/organizations/${item.id}/matches`)}
+                onPress={() => router.push(`/organizations/${item._id}/matches`)}
               />
             )}
           />

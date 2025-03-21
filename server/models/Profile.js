@@ -49,11 +49,19 @@ const profileSchema = new mongoose.Schema({
     type: Number, 
     default: 1 
   },
-  rankings: [{
-    user: { 
+  /*
+  For each round, there's an entry containing the profiles that the user
+  swiped left/right on.
+  */
+  rounds: [{
+    swipesRight: [{
       type: mongoose.Schema.Types.ObjectId, 
-      ref: 'Profile' },
-    timestamp: Date
+      ref: 'Profile'
+    }],
+    swipesLeft: [{
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Profile'
+    }]
   }],
   matches: [{ 
     type: mongoose.Schema.Types.ObjectId, 
