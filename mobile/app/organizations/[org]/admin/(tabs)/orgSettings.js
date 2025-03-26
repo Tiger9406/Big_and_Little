@@ -11,6 +11,7 @@ export default function OrganizationSettings() {
   const [roundsInput, setRoundsInput] = useState("");
   const [swipesInput, setSwipesInput] = useState("");
   const [dateModalVisible, setDateModalVisible] = useState(false);
+  const [editOrgModalVisible, setEditOrgModalVisible] = useState(false);
   const [month, setMonth] = useState("");
   const [day, setDay] = useState("");
   const [year, setYear] = useState("");
@@ -66,6 +67,20 @@ export default function OrganizationSettings() {
     } else {
       Alert.alert("Please enter a valid number.");
     }
+  };
+
+  const handleEditOrgModalOpen = () => {
+    // Set temporary values when opening the modal
+    setTempOrgName(orgName);
+    setTempOrgDescription(orgDescription);
+    setEditOrgModalVisible(true);
+  };
+
+  const handleEditOrgSave = () => {
+    // Save changes and close modal
+    setOrgName(tempOrgName);
+    setOrgDescription(tempOrgDescription);
+    setEditOrgModalVisible(false);
   };
 
 
@@ -125,6 +140,48 @@ export default function OrganizationSettings() {
         </TouchableOpacity>
         <Text style={styles.buttonDescription}>Set/Edit Max Swipes per round</Text>
       </View>
+
+    {/* Edit Organization Modal */}
+    <Modal
+        animationType="slide"
+        transparent={true}
+        visible={editOrgModalVisible}
+        onRequestClose={() => setEditOrgModalVisible(false)}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Edit Organization Details</Text>
+            <TextInput 
+              style={styles.modalInput} 
+              placeholder="Organization Name" 
+              value={tempOrgName} 
+              onChangeText={setTempOrgName} 
+            />
+            <TextInput 
+              style={[styles.modalInput, styles.multilineInput]} 
+              placeholder="Organization Description" 
+              value={tempOrgDescription} 
+              onChangeText={setTempOrgDescription} 
+              multiline={true}
+              numberOfLines={4}
+            />
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => setEditOrgModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.saveModalButton]} 
+                onPress={handleEditOrgSave}
+              >
+                <Text style={styles.modalButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Date Input Modal */}
       <Modal
