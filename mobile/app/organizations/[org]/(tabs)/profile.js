@@ -14,6 +14,8 @@ import StyledPictureInput from '@components/StyledPictureInput';
 import ProfilePicture from '@components/ProfilePicture';
 import useAuth from '@context/useAuth';
 import { useSession } from '@context/ctx';
+import ProfileCard from '@components/ProfileCard';
+
 
 /*
     route: /view-profile
@@ -30,9 +32,7 @@ export default function ViewProfile() {
   const { userId, profiles } = useAuth();
   const params = useGlobalSearchParams();
   const [orgID, setOrgID] = useState('');
-
   const { session } = useSession();
-
 
   // State for scroll fix
   const scrollViewRef = useRef(null);
@@ -271,105 +271,98 @@ export default function ViewProfile() {
     }
   }
 
+
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={styles.container}>
-        <View style={[styles.horizontalContainer]}>
-          <ProfilePicture
-            src={''}
-          />
-
-          {isEditing ? (
-            <StyledTextInput
-              field="Name"
-              value={profileName}
-              setText={setProfileName}
-              placeholder="Your name"
-              autocorrect={false}
-              editable={true}
-              required
-            />
-          ) : (
-            <Text style={profileName ? styles.profileText : styles.emptyContainer}>{profileName || "No name set"}</Text>
-          )}
-
+    <View style={{ flex: 1 }}>
+      {!isEditing ? (
+        <View style={{ flex: 1 }}>
+          <ProfileCard profile={{
+            profileName: profileName,
+            major: major,
+            description: description,
+            interests: interests,
+            images: images
+          }} />
         </View>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <ScrollView
-            style={styles.scrollContainer}
-            ref={scrollViewRef}
-            onMomentumScrollEnd={handleScroll}>
-            <View onStartShouldSetResponder={() => true} style={styles.form}>
-              <View style={styles.imageContainer}>
-                {images.map((image, index) => (
-                  isEditing ? (
-                    <TouchableWithoutFeedback key={index} onPress={() => pickImage(index)}>
-                      <Image source={{ uri: image }} style={styles.image} />
-                    </TouchableWithoutFeedback>
-                  ) : (
-                    <Image key={index} source={{ uri: image }} style={styles.image} />
-                  )
-                ))}
-              </View>
-              <View style={styles.buttonContainer}>
-
-                {isEditing && images.length < 3 ? (
-                  <StyledButton text={"Insert Picture"} onClick={() => pickImage(images.length)} />
-                ) : null}
-              </View>
-
-
-
-              <Text style={{ fontSize: 20 }}>Interests</Text>
-              <View>
-                {interests && <View style={styles.horizontalContainer}>{interests.map((item, index) => (
-                  <Pressable key={index} onPress={() => handlePressInterest(index)}>
-                    <Text style={styles.interest}>
-                      {item}
-                    </Text>
-
-                  </Pressable>
-                ))}</View>}
-              </View>
-
-              {isEditing ? (
-                <StyledTextInput
-                  field="Major"
-                  value={major}
-                  setText={setMajor}
-                  placeholder="Your major"
-                  autocorrect={false}
-                  editable={isEditing}
-                  required />) : (<Text style={major ? styles.filledContainer : styles.emptyContainer}>{major || "No major set"}</Text>)}
-
-              {isEditing ? (
-                <StyledTextInput
-                  field="Description"
-                  value={description}
-                  setText={setDescription}
-                  multiline
-                  numberOfLines={4}
-                  placeholder="Tell us about yourself"
-                  autocorrect={false}
-                  editable={isEditing}
-                  required />) : (<Text style={description ? styles.filledContainer : styles.emptyContainer}>{description || "No description set"}</Text>)}
-            </View>
-
-
-            <View style={styles.buttonContainer}>
-              <StyledButton text={isEditing ? "Save" : "Edit"} onClick={() => { isEditing ? saveProfile() : toggleIsEditing(true) }} />
-            </View>
-
-            {/* <StyledButton text="Save" onClick={saveProfile} /> */}
-
-
-          </ScrollView>
-        </KeyboardAvoidingView>
+      ) : (
+        
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.container}
+              >
+                <ScrollView
+                  ref={scrollViewRef}
+                  onMomentumScrollEnd={handleScroll}
+                  style={styles.scrollContainer}
+                >
+                  <View style={styles.form}>
+                    <StyledTextInput
+                      field="Name"
+                      value={profileName}
+                      setText={setProfileName}
+                      placeholder="Your name"
+                      autoCorrect={false}
+                      required
+                    />
+        
+                    <View style={styles.imageContainer}>
+                      {images.map((image, index) => (
+                        <TouchableWithoutFeedback key={index} onPress={() => pickImage(index)}>
+                          <Image source={{ uri: image }} style={styles.image} />
+                        </TouchableWithoutFeedback>
+                      ))}
+                    </View>
+        
+                    {images.length < 3 && (
+                      <StyledButton 
+                        text="Add Picture"
+                        onClick={() => pickImage(images.length)}
+                      />
+                    )}
+        
+                    <View style={styles.interestsSection}>
+                      <Text style={styles.sectionTitle}>Interests</Text>
+                      <View style={styles.interestsContainer}>
+                        {interests.map((item, index) => (
+                          <Pressable key={index} onPress={() => handlePressInterest(index)}>
+                            <Text style={styles.interest}>{item}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+        
+                    <StyledTextInput
+                      field="Major"
+                      value={major}
+                      setText={setMajor}
+                      placeholder="Your major"
+                      autoCorrect={false}
+                      required
+                    />
+        
+                    <StyledTextInput
+                      field="Bio"
+                      value={description}
+                      setText={setDescription}
+                      placeholder="Tell us about yourself"
+                      multiline
+                      numberOfLines={4}
+                      autoCorrect={false}
+                      required
+                    />
+                    </View>
+                </ScrollView>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
+      )}
+      <View style={styles.buttonContainer}>
+            <StyledButton text={isEditing ? "Save" : "Edit"} onClick={() => { isEditing ? saveProfile() : setIsEditing(true) }}/>
       </View>
-    </TouchableWithoutFeedback>
+    </View>
   );
-}
 
+}
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -379,10 +372,10 @@ const styles = StyleSheet.create({
     flexDirection: 'column'
   },
   buttonContainer: {
-    flex: 1,
     backgroundColor: '#ffffff',
     fontFamily: 'Inter',
-    gap: 10
+    gap: 10,
+    padding: 10,
   },
   horizontalContainer: {
     display: 'flex',
@@ -452,6 +445,81 @@ const styles = StyleSheet.create({
     margin: 5,
     borderRadius: 10,
   },
-
-
+  animatedContainer: {
+    flex: 1, //  entire profile view is animated
+  },
+  scrollView: {
+    paddingHorizontal: 20,
+    paddingRight: 15, // right margin, scrollbar
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  profilePicture: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#ccc',
+  },
+  userInfo: {
+    marginLeft: 10,
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  year: {
+    fontSize: 16,
+    color: '#888',
+  },
+  photoContainer: {
+    height: 400,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    position: 'relative',
+  },
+  photoPlaceholder: {
+    fontSize: 18,
+    color: '#888',
+  },
+  leftButton: {
+    position: 'absolute',
+    bottom: 15,
+    left: 15,
+  },
+  rightButton: {
+    position: 'absolute',
+    bottom: 15,
+    right: 15,
+  },
+  interestsSection: {
+    marginTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  interestsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  interestItem: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    fontSize: 14,
+  },
+  descriptionSection: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  
 });
