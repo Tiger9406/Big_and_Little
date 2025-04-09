@@ -1,89 +1,235 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
-  View, Text, TextInput, TouchableOpacity, Alert, SafeAreaView, StyleSheet, Modal 
+  View, Text, TextInput, TouchableOpacity, Alert, 
+  SafeAreaView, ScrollView, StyleSheet, Modal,
+  ActivityIndicator
 } from "react-native";
+import BottomNavbar from "./components/bottomNavbar";
 
-export default function OrganizationSettings() {
-  const [orgName, setOrgName] = useState(""); // Initialize orgName
-  const [orgDescription, setOrgDescription] = useState("");
-  const [roundsModalVisible, setRoundsModalVisible] = useState(false);
-  const [swipesModalVisible, setSwipesModalVisible] = useState(false);
-  const [roundsInput, setRoundsInput] = useState("");
-  const [swipesInput, setSwipesInput] = useState("");
-  const [dateModalVisible, setDateModalVisible] = useState(false);
-  const [editOrgModalVisible, setEditOrgModalVisible] = useState(false);
-  const [month, setMonth] = useState("");
-  const [day, setDay] = useState("");
-  const [year, setYear] = useState("");
+const URI = process.env.EXPO_PUBLIC_URI || "localhost";
+
+const OrganizationSettings = ({ route, orgId: propOrgId }) => {
+  const { orgId } = (route && route.params) || { orgId: propOrgId || "67ab5ee265519e108202a425" };
+  // Organization state
+  const [orgData, setOrgData] = useState({
+    name: "",
+    description: "",
+    swipesPerRound: [0, 0, 0],
+    roundDates: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  // Modal visibility states
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [roundModalVisible, setRoundModalVisible] = useState(false);
   
-  const showPopup = (message) => {
-    Alert.alert(message);
+  // Round data for editing
+  const [roundData, setRoundData] = useState([
+    { id: 1, startDate: {}, endDate: {}, swipes: "" },
+    { id: 2, startDate: {}, endDate: {}, swipes: "" },
+    { id: 3, startDate: {}, endDate: {}, swipes: "" }
+  ]);
+
+  useEffect(() => {
+    fetchOrganizationData();
+  }, []);
+
+  // Fetch organization data
+  const fetchOrganizationData = async () => {
+    try {
+      // Mock data
+      const mockResponse = {
+        _id: orgId,
+        name: "LeBron James",
+        description: "goat",
+        logo: "goat.png",
+        isPublic: true,
+        joinCode: 1,
+        owner: "67b541da0a12c97057698e42",
+        currentRound: 0,
+        isMatching: true,
+        members: [],
+        roundWeighting: [1, 3, 5],
+        rounds: 3,
+        swipesPerRound: [20, 10, 5],
+        // Adding mock roundDates **Need to add to Events schema
+        roundDates: [
+          { startDate: "04/01/2025", endDate: "04/15/2025" },
+          { startDate: "04/16/2025", endDate: "04/30/2025" },
+          { startDate: "05/01/2025", endDate: "05/15/2025" }
+        ]
+      };
+      
+      // const response = await fetch(`http://${URI}:${process.env.EXPO_PUBLIC_PORT}/organizations/${org}/admin/orgSettings`);
+      // const data = await response.json();
+      
+      setOrgData(mockResponse);
+      
+      // Format round data for editing
+      if (mockResponse.roundDates && mockResponse.roundDates.length > 0) {
+        const formattedRounds = mockResponse.roundDates.map((round, index) => {
+          const startParts = round.startDate ? round.startDate.split('/') : ["", "", ""];
+          const endParts = round.endDate ? round.endDate.split('/') : ["", "", ""];
+          
+          return {
+            id: index + 1,
+            startDate: {
+              month: startParts[0] || "",
+              day: startParts[1] || "",
+              year: startParts[2] || ""
+            },
+            endDate: {
+              month: endParts[0] || "",
+              day: endParts[1] || "",
+              year: endParts[2] || ""
+            },
+            swipes: mockResponse.swipesPerRound[index]?.toString() || ""
+          };
+        });
+        
+        setRoundData(formattedRounds);
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching organization data:", error);
+      Alert.alert("Error", "Failed to load organization data.");
+      setLoading(false);
+    }
   };
 
-  const monthRef = useRef(null);
-  const dayRef = useRef(null);
-  const yearRef = useRef(null);
-
-  const handleMonthChange = (text) => {
-    setMonth(text);
-    if (text.length === 2) dayRef.current?.focus(); // Move to day input
-  };
-
-  const handleDayChange = (text) => {
-    setDay(text);
-    if (text.length === 2) yearRef.current?.focus(); // Move to year input
-  };
-
-  const handleDateSave = () => {
-    const monthNum = parseInt(month, 10);
-    const dayNum = parseInt(day, 10);
-    const yearNum = parseInt(year, 10);
-  
-    if (
-      monthNum >= 1 && monthNum <= 12 &&
-      dayNum >= 1 && dayNum <= 31 &&
-      year.length === 4
-    ) {
-      Alert.alert(`Date set to: ${month}/${day}/${year}`);
-      setDateModalVisible(false);
-    } else {
-      Alert.alert("Invalid date. Please enter a valid MM/DD/YYYY.");
+  // Updates org data in the database
+  const saveOrgSettings = async () => {
+    try {
+      const updatedData = {
+        name: orgData.name,
+        description: orgData.description
+      };
+    
+      // const response = await fetch(`http://${URI}:${process.env.EXPO_PUBLIC_PORT}/organizations/${org}/admin/orgSettings`, {
+      //   method: "PUT",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify(updatedData),
+      // });
+      
+      // For demo:
+      console.log("Updating organization with:", updatedData);
+      
+      Alert.alert("Success", "Organization settings updated successfully.");
+      setSettingsModalVisible(false);
+    } catch (error) {
+      console.error("Error saving organization settings:", error);
+      Alert.alert("Error", "Failed to update organization settings.");
     }
   };
   
-  const handleRoundsSave = () => {
-    if (!isNaN(roundsInput) && roundsInput !== "") {
-      Alert.alert(`Number of Rounds set to ${roundsInput}`);
-      setRoundsModalVisible(false);
-    } else {
-      Alert.alert("Please enter a valid number.");
+  const saveRoundSettings = async () => {
+    try {
+      // Validates dates for rounds that have data
+      for (let round of roundData) {
+        // Validates rounds that have some data entered
+        if (round.startDate.month || round.endDate.month || round.swipes) {
+          if (!round.startDate.month || !round.startDate.day || !round.startDate.year ||
+              !round.endDate.month || !round.endDate.day || !round.endDate.year ||
+              !round.swipes) {
+            Alert.alert("Incomplete Data", `Please fill in all fields for Round ${round.id}`);
+            return;
+          }
+          
+          // Date formating
+          const startMonth = parseInt(round.startDate.month, 10);
+          const startDay = parseInt(round.startDate.day, 10);
+          const startYear = parseInt(round.startDate.year, 10);
+          
+          const endMonth = parseInt(round.endDate.month, 10);
+          const endDay = parseInt(round.endDate.day, 10);
+          const endYear = parseInt(round.endDate.year, 10);
+          
+          if (
+            startMonth < 1 || startMonth > 12 || 
+            startDay < 1 || startDay > 31 ||
+            startYear < 2023 ||
+            endMonth < 1 || endMonth > 12 ||
+            endDay < 1 || endDay > 31 ||
+            endYear < 2023
+          ) {
+            Alert.alert("Invalid Date", `Please enter valid dates for Round ${round.id}`);
+            return;
+          }
+        }
+      }
+      
+      // API formatting
+      const roundDates = roundData.map(round => ({
+        startDate: `${round.startDate.month}/${round.startDate.day}/${round.startDate.year}`,
+        endDate: `${round.endDate.month}/${round.endDate.day}/${round.endDate.year}`
+      }));
+      
+      const swipesPerRound = roundData.map(round => parseInt(round.swipes, 10) || 0);
+      
+      const updatedData = {
+        roundDates,
+        swipesPerRound
+      };
+      
+      // const response = await fetch(`http://${URI}:${process.env.EXPO_PUBLIC_PORT}/organizations/${org}/admin/orgSettings`, {
+      //   method: "PUT",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify(updatedData),
+      // });
+      
+      // For testing
+      console.log("Updating round settings:", updatedData);
+      
+      // Updates local state with the new data
+      setOrgData(prev => ({
+        ...prev,
+        roundDates,
+        swipesPerRound
+      }));
+      
+      // Summary string for the alert on save
+      const summary = roundData.map(round => 
+        `Round ${round.id}:\n` +
+        `  Start Date: ${round.startDate.month}/${round.startDate.day}/${round.startDate.year}\n` +
+        `  End Date: ${round.endDate.month}/${round.endDate.day}/${round.endDate.year}\n` +
+        `  Swipes: ${round.swipes}`
+      ).join('\n\n');
+      
+      Alert.alert("Round Settings Saved", summary);
+      setRoundModalVisible(false);
+    } catch (error) {
+      console.error("Error saving round settings:", error);
+      Alert.alert("Error", "Failed to update round settings.");
     }
   };
-
-  const handleSwipesSave = () => {
-    if (!isNaN(swipesInput) && swipesInput !== "") {
-      Alert.alert(`Max Swipes set to ${swipesInput}`);
-      setSwipesModalVisible(false);
-    } else {
-      Alert.alert("Please enter a valid number.");
-    }
+  
+  // Input change for round settings
+  const handleRoundInputChange = (roundId, field, subField, value) => {
+    setRoundData(prev => 
+      prev.map(round => 
+        round.id === roundId 
+          ? { 
+              ...round, 
+              [field]: subField 
+                ? { ...round[field], [subField]: value } 
+                : value 
+            }
+          : round
+      )
+    );
   };
 
-  const handleEditOrgModalOpen = () => {
-    // Set temporary values when opening the modal
-    setTempOrgName(orgName);
-    setTempOrgDescription(orgDescription);
-    setEditOrgModalVisible(true);
-  };
-
-  const handleEditOrgSave = () => {
-    // Save changes and close modal
-    setOrgName(tempOrgName);
-    setOrgDescription(tempOrgDescription);
-    setEditOrgModalVisible(false);
-  };
-
-
+  // Loading data
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text>Loading organization data...</Text>
+      </SafeAreaView>
+    );
+  }
+  
   return (
     <SafeAreaView style={styles.container}>
       {/* Top Navbar */}
@@ -102,212 +248,221 @@ export default function OrganizationSettings() {
         </TouchableOpacity>
       </View>
 
-      {/* Input Fields */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Organization Name</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Enter organization name" 
-          value={orgName} 
-          onChangeText={setOrgName} 
-        />
-      </View>
-
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Organization Description</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Enter organization description" 
-          value={orgDescription} 
-          onChangeText={setOrgDescription} 
-        />
-      </View>
-
-      {/* Buttons with Descriptions */}
-      <View style={styles.centeredContainer}>
-      <TouchableOpacity style={styles.popupButton} onPress={() => setDateModalVisible(true)}>
-          <Text style={styles.buttonText}>Matching Dates</Text>
-        </TouchableOpacity>
-        <Text style={styles.buttonDescription}>Set/Edit Matching Dates</Text>
-
-        <TouchableOpacity style={styles.popupButton} onPress={() => setRoundsModalVisible(true)}>
-          <Text style={styles.buttonText}>Number of Rounds</Text>
-        </TouchableOpacity>
-        <Text style={styles.buttonDescription}>Set/Edit number of rounds</Text>
-
-        <TouchableOpacity style={styles.popupButton} onPress={() => setSwipesModalVisible(true)}>
-          <Text style={styles.buttonText}>Max Swipes</Text>
-        </TouchableOpacity>
-        <Text style={styles.buttonDescription}>Set/Edit Max Swipes per round</Text>
-      </View>
-
-    {/* Edit Organization Modal */}
-    <Modal
-        animationType="slide"
-        transparent={true}
-        visible={editOrgModalVisible}
-        onRequestClose={() => setEditOrgModalVisible(false)}
-      >
-        <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalText}>Edit Organization Details</Text>
-            <TextInput 
-              style={styles.modalInput} 
-              placeholder="Organization Name" 
-              value={tempOrgName} 
-              onChangeText={setTempOrgName} 
-            />
-            <TextInput 
-              style={[styles.modalInput, styles.multilineInput]} 
-              placeholder="Organization Description" 
-              value={tempOrgDescription} 
-              onChangeText={setTempOrgDescription} 
-              multiline={true}
-              numberOfLines={4}
-            />
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={() => setEditOrgModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.saveModalButton]} 
-                onPress={handleEditOrgSave}
-              >
-                <Text style={styles.modalButtonText}>Save</Text>
-              </TouchableOpacity>
+      {/* Organization Info Display */}
+      <ScrollView style={styles.scrollContainer}>
+        <View style={styles.infoContainer}>
+          <Text style={styles.infoLabel}>Organization Name:</Text>
+          <Text style={styles.infoText}>{orgData.name || "Not set"}</Text>
+          
+          <Text style={styles.infoLabel}>Description:</Text>
+          <Text style={styles.infoText}>{orgData.description || "Not set"}</Text>
+          
+          {/* Display round information */}
+          {Array.from({ length: orgData.rounds || 3 }).map((_, index) => (
+            <View key={index}>
+              <Text style={styles.infoLabel}>{`Round ${index + 1} Start - End Date:`}</Text>
+              <Text style={styles.infoText}>
+                {orgData.roundDates && orgData.roundDates[index]
+                  ? `${orgData.roundDates[index].startDate} - ${orgData.roundDates[index].endDate}`
+                  : "Not set"
+                }
+              </Text>
             </View>
-          </View>
+          ))}
         </View>
-      </Modal>
 
-      {/* Date Input Modal */}
-      <Modal
-  animationType="slide"
-  transparent={true}
-  visible={dateModalVisible}
-  onRequestClose={() => setDateModalVisible(false)}
->
-  <View style={styles.centeredView}>
-    <View style={styles.modalView}>
-      <Text style={styles.modalText}>Enter Date:</Text>
-      <View style={styles.modalButtonContainer}>
-        <TextInput
-          style={[styles.dateInput, styles.smallInput]}
-          placeholder="MM"
-          keyboardType="numeric"
-          maxLength={2}
-          value={month}
-          onChangeText={(text) => handleMonthChange(text)}
-        />
-        <TextInput
-          style={[styles.dateInput, styles.smallInput]}
-          placeholder="DD"
-          keyboardType="numeric"
-          maxLength={2}
-          value={day}
-          onChangeText={(text) => handleDayChange(text)}
-        />
-        <TextInput
-          style={[styles.yearInput, styles.largeInput]}
-          placeholder="YYYY"
-          keyboardType="numeric"
-          maxLength={4}
-          value={year}
-          onChangeText={setYear}
-        />
-      </View>
-      <View style={styles.modalButtonContainer}>
-        <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setDateModalVisible(false)}>
-          <Text style={styles.modalButtonText}>Cancel</Text>
+        {/* Edit Org Settings Button */}
+        <TouchableOpacity 
+          style={styles.editButton}
+          onPress={() => setSettingsModalVisible(true)}
+        >
+          <Text style={styles.editButtonText}>Edit Organization Settings</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.modalButton, styles.saveModalButton]} onPress={handleDateSave}>
-          <Text style={styles.modalButtonText}>Save</Text>
+        {/* Edit Round Button */}
+        <TouchableOpacity 
+          style={styles.editButton}
+          onPress={() => setRoundModalVisible(true)}
+        >
+          <Text style={styles.editButtonText}>Edit Round Settings</Text>
         </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-</Modal>
+      </ScrollView>
 
-       {/* Number of Rounds Modal */}
-       <Modal
-        animationType="slide"
-        transparent={true}
-        visible={roundsModalVisible}
-        onRequestClose={() => setRoundsModalVisible(false)}
-      >
-        <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalText}>Enter Number of Rounds:</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Number"
-              keyboardType="numeric"
-              value={roundsInput}
-              onChangeText={setRoundsInput}
-            />
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setRoundsModalVisible(false)}>
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalButton, styles.saveModalButton]} onPress={handleRoundsSave}>
-                <Text style={styles.modalButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Max Swipes Modal */}
+      {/* Edit Org Modal */}
       <Modal
         animationType="slide"
         transparent={true}
-        visible={swipesModalVisible}
-        onRequestClose={() => setSwipesModalVisible(false)}
+        visible={settingsModalVisible}
+        onRequestClose={() => setSettingsModalVisible(false)}
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text style={styles.modalText}>Enter Max Swipes:</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Number"
-              keyboardType="numeric"
-              value={swipesInput}
-              onChangeText={setSwipesInput}
-            />
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setSwipesModalVisible(false)}>
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalButton, styles.saveModalButton]} onPress={handleSwipesSave}>
-                <Text style={styles.modalButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollViewContent}
+            >
+              <Text style={styles.modalTitle}>Edit Organization Settings</Text>
+
+              {/* Organization Name */}
+              <Text style={styles.label}>Organization Name</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="Enter organization name" 
+                value={orgData.name}
+                onChangeText={(text) => setOrgData(prev => ({...prev, name: text}))}
+              />
+
+              {/* Organization Description */}
+              <Text style={styles.label}>Organization Description</Text>
+              <TextInput 
+                style={[styles.input, styles.multilineInput]} 
+                placeholder="Enter organization description" 
+                value={orgData.description}
+                onChangeText={(text) => setOrgData(prev => ({...prev, description: text}))}
+                multiline={true}
+                numberOfLines={4}
+              />
+              
+              {/* Modal Action Buttons */}
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.cancelButton]} 
+                  onPress={() => setSettingsModalVisible(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.saveButton]} 
+                  onPress={saveOrgSettings}
+                >
+                  <Text style={styles.modalButtonText}>Save Settings</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* Save Settings Button */}
-      <TouchableOpacity 
-        style={styles.saveButton} 
-        onPress={() => Alert.alert(`Saved! Name: ${orgName}, Desc: ${orgDescription}`)}
+      {/* Round Settings Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={roundModalVisible}
+        onRequestClose={() => setRoundModalVisible(false)}
       >
-        <Text style={styles.saveButtonText}>Save Settings</Text>
-      </TouchableOpacity>
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollViewContent}
+            >
+              <Text style={styles.modalTitle}>Edit Rounds Settings</Text>
+              
+              {/* Rounds Information */}
+              {roundData.map(round => (
+                <View key={round.id}>
+                  <Text style={styles.label}>{`Round ${round.id}`}</Text>
+                  <Text style={styles.label}>Start Date</Text>
+                  <View style={styles.dateInputContainer}>
+                    <TextInput 
+                      style={styles.dateInput} 
+                      placeholder="MM"
+                      keyboardType="numeric"
+                      maxLength={2}
+                      value={round.startDate.month}
+                      onChangeText={(text) => handleRoundInputChange(round.id, 'startDate', 'month', text)}
+                    />
+                    <TextInput 
+                      style={styles.dateInput} 
+                      placeholder="DD"
+                      keyboardType="numeric"
+                      maxLength={2}
+                      value={round.startDate.day}
+                      onChangeText={(text) => handleRoundInputChange(round.id, 'startDate', 'day', text)}
+                    />
+                    <TextInput 
+                      style={styles.yearInput} 
+                      placeholder="YYYY"
+                      keyboardType="numeric"
+                      maxLength={4}
+                      value={round.startDate.year}
+                      onChangeText={(text) => handleRoundInputChange(round.id, 'startDate', 'year', text)}
+                    />
+                  </View>
+                  <Text style={styles.label}>End Date</Text>
+                  <View style={styles.dateInputContainer}>
+                    <TextInput 
+                      style={styles.dateInput} 
+                      placeholder="MM"
+                      keyboardType="numeric"
+                      maxLength={2}
+                      value={round.endDate.month}
+                      onChangeText={(text) => handleRoundInputChange(round.id, 'endDate', 'month', text)}
+                    />
+                    <TextInput 
+                      style={styles.dateInput} 
+                      placeholder="DD"
+                      keyboardType="numeric"
+                      maxLength={2}
+                      value={round.endDate.day}
+                      onChangeText={(text) => handleRoundInputChange(round.id, 'endDate', 'day', text)}
+                    />
+                    <TextInput 
+                      style={styles.yearInput} 
+                      placeholder="YYYY"
+                      keyboardType="numeric"
+                      maxLength={4}
+                      value={round.endDate.year}
+                      onChangeText={(text) => handleRoundInputChange(round.id, 'endDate', 'year', text)}
+                    />
+                  </View>
+                  <Text style={styles.label}>Number of Swipes</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    placeholder={`Number of Swipes - Round ${round.id}`}
+                    keyboardType="numeric"
+                    value={round.swipes.toString()}
+                    onChangeText={(text) => handleRoundInputChange(round.id, 'swipes', null, text)}
+                  />
+                </View>
+              ))}
+
+              {/* Modal Action Buttons */}
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.cancelButton]} 
+                  onPress={() => setRoundModalVisible(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.saveButton]} 
+                  onPress={saveRoundSettings}
+                >
+                  <Text style={styles.modalButtonText}>Save Settings</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Bottom Navigation Bar */}
+      <BottomNavbar />
     </SafeAreaView>
   );
 };
 
 // Styles
 const styles = StyleSheet.create({
+  // Main container style
   container: {
     flex: 1,
     backgroundColor: "white",
     justifyContent: "center",
-    paddingBottom: 80,
+    paddingBottom: 80, 
   },
+
+  // Top navigation bar styles
   topNavbar: {
     position: "absolute",
     top: 0,
@@ -336,16 +491,18 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 15,
     top: 52,
-    padding: 15, 
+    padding: 15,
   },
   backCaret: {
     fontSize: 40,
     fontWeight: "bold",
   },
+
+  // Logo section styles
   logoContainer: {
     alignItems: "center",
     marginBottom: 20,
-    marginTop: 30, // Ensures space below the navbar
+    marginTop: 100, 
   },
   logoPlaceholder: {
     width: 120,
@@ -355,69 +512,49 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   editLogo: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
     color: "black",
   },
-  formGroup: {
+
+  // Organization info display styles
+  infoContainer: {
+    marginHorizontal: 20,
     marginBottom: 20,
-    alignSelf: "center",
-    width: "85%",
   },
-  label: {
+  infoLabel: {
     fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
+    fontWeight: 'bold',
+    marginTop: 10,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    padding: 10,
-    fontSize: 16,
-    width: "100%",
-  },
-  centeredContainer: {
-    alignItems: "center",
-  },
-  popupButton: {
-    backgroundColor: "#d3d3d3",
-    width: "70%",
-    height: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 5,
-    marginVertical: 5,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  buttonDescription: {
-    fontSize: 12,
-    color: "gray",
-    textAlign: "center",
+  infoText: {
+    fontSize: 18,
     marginBottom: 10,
+    paddingLeft: 10,
   },
-  saveButton: {
-    backgroundColor: "black",
-    paddingVertical: 15,
+
+  // Edit button styles
+  editButton: {
+    backgroundColor: 'black',
+    padding: 15,
     borderRadius: 5,
-    alignItems: "center",
-    width: "70%",
-    alignSelf: "center",
+    alignItems: 'center',
+    marginHorizontal: 20,
     marginTop: 20,
   },
-  saveButtonText: {
-    color: "white",
+  editButtonText: {
+    color: 'white',
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
+
+  // Modal styles
   centeredView: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 30,
+    marginTop: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalView: {
     margin: 20,
@@ -426,67 +563,93 @@ const styles = StyleSheet.create({
     padding: 35,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+    width: '90%',
+    maxHeight: '80%',
   },
-  modalText: {
-    marginBottom: 15,
-    textAlign: "center",
+  scrollView: {
+    width: '100%',
   },
-  modalInput: {
-    height: 40,
-    margin: 12,
+  scrollViewContent: {
+    paddingBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+
+  // Form input styles
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 8,
+    marginTop: 10,
+  },
+  input: {
     borderWidth: 1,
-    padding: 10,
-    width: 200,
+    borderColor: "#ccc",
     borderRadius: 5,
+    padding: 10,
+    fontSize: 16,
+    marginBottom: 10,
+    width: "100%",
+  },
+  multilineInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  dateInputContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   dateInput: {
-    height: 40,
-    margin: 12,
+    width: '30%',
     borderWidth: 1,
-    padding: 10,
-    width: 60,
+    borderColor: "#ccc",
     borderRadius: 5,
+    padding: 10,
+    fontSize: 16,
   },
   yearInput: {
-    height: 40,
-    margin: 12,
+    width: '35%',
     borderWidth: 1,
-    padding: 10,
-    width: 120,
+    borderColor: "#ccc",
     borderRadius: 5,
+    padding: 10,
+    fontSize: 16,
   },
+
+  // Modal button styles
   modalButtonContainer: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    marginTop: 10,
+    justifyContent: "space-between",
+    marginTop: 20,
+    width: '100%',
   },
 
   modalButton: {
     borderRadius: 20,
-    padding: 10,
-    elevation: 2,
-    minWidth: 80,
-    alignItems: "center",
+    padding: 12,
+    width: '48%',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: "#d3d3d3",
+  },
+  saveButton: {
+    backgroundColor: "black",
   },
   modalButtonText: {
     color: "white",
     fontWeight: "bold",
-    textAlign: "center",
-  },
-  cancelButton: {
-    left: -20,
-    backgroundColor: "#d3d3d3", // Light gray for cancel
-  },
-  saveModalButton: {
-    left: -20,
-    backgroundColor: "black", // Blue for save
+    fontSize: 16,
   },
 });
+
+export default orgSettings;
