@@ -59,9 +59,15 @@ export default function Explore() {
     } 
     else{
       router.push({
+        pathname: "/org-info",
+        params: { org: orgId }
+      });
+      /*
+      router.push({
         pathname: "/join-org",
         params: { org: orgId }
       });
+      */
     }
   }
 
